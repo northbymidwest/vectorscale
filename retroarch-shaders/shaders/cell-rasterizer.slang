@@ -10,7 +10,7 @@
 // endpoint rejection, matching the compute shader's resolve_from_shared().
 //
 // Input textures:
-//   Source   (FinalPositions): optimized position offsets
+//   Source   (FinalPositions): optimized absolute positions
 //   CellGraph: original positions + neighbors + flags + packed directions
 //   Original: input pixel art image
 //
@@ -42,7 +42,7 @@ void main() {
 layout(location = 0) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 
-layout(set = 0, binding = 2) uniform sampler2D Source;    // FinalPositions (optimized offsets)
+layout(set = 0, binding = 2) uniform sampler2D Source;    // FinalPositions (optimized positions)
 layout(set = 0, binding = 3) uniform sampler2D CellGraph; // positions + neighbors + flags + directions
 layout(set = 0, binding = 4) uniform sampler2D Original;  // input pixel art image
 
@@ -73,21 +73,20 @@ vec2 read_orig(int cp_idx) {
     return vec2(val.r, val.g);
 }
 
-// Read optimized position = original + offset from optimizer chain.
+// Read optimized absolute position from Source.
 vec2 read_pos(int cp_idx) {
     if (cp_idx < 0 || cp_idx >= NUM_CPS()) return vec2(-1e10);
     int cx, cy_slot;
     decode_cp(cp_idx, cx, cy_slot);
-    vec2 orig = read_orig(cp_idx);
-    vec4 offset_val = texelFetch(Source, ivec2(cx, cy_slot), 0);
-    return orig + vec2(offset_val.r, offset_val.g);
+    vec4 val = texelFetch(Source, ivec2(cx, cy_slot), 0);
+    return vec2(val.r, val.g);
 }
 
 // Decode a neighbor CP index from component encoding.
 int decode_neighbor(vec4 val) {
     if (val.r < -0.5) return -1;
-    int ncx = int(val.r * 256.0 + 0.5);
-    int ncy = int(val.g * 256.0 + 0.5);
+    int ncx = int(val.r + 0.5);
+    int ncy = int(val.g + 0.5);
     int nslot = int(val.b + 0.5);
     return (ncy * CORNERS_W() + ncx) * 2 + nslot;
 }
@@ -110,7 +109,7 @@ uint read_flags(int cp_idx) {
     decode_cp(cp_idx, cx, cy_slot);
     int base_row = cy_slot * 3;
     vec4 val = texelFetch(CellGraph, ivec2(cx, base_row), 0);
-    return uint(val.b * 64.0 + 0.5);
+    return uint(val.b + 0.5);
 }
 
 // Read packed boundary directions from cell graph (row 0, A channel).
@@ -121,7 +120,7 @@ ivec2 read_dirs(int cp_idx) {
     decode_cp(cp_idx, cx, cy_slot);
     int base_row = cy_slot * 3;
     vec4 val = texelFetch(CellGraph, ivec2(cx, base_row), 0);
-    int dir_pack = int(val.a * 64.0 + 0.5);
+    int dir_pack = int(val.a + 0.5);
     int prev_dir = (dir_pack % 8) - 1;
     int next_dir = (dir_pack / 8) - 1;
     return ivec2(prev_dir, next_dir);
@@ -235,10 +234,17 @@ void main() {
 
 
     // Collect nearest boundary hits from CPs in a 5x5 neighborhood.
+    // Positions and neighbors are cached in the Hit struct to avoid
+    // re-fetching them during color resolution.
     struct Hit {
         float d2;
         float t;
         int cp_idx;
+        int prev_ci;
+        int next_ci;
+        vec2 cp_pos;
+        vec2 prev_pos;
+        vec2 next_pos;
     };
 
     Hit hits[4];
@@ -287,6 +293,11 @@ void main() {
                             hits[h].d2 = span_d2;
                             hits[h].t = span_t;
                             hits[h].cp_idx = ci;
+                            hits[h].prev_ci = prev_ci;
+                            hits[h].next_ci = next_ci;
+                            hits[h].cp_pos = cp;
+                            hits[h].prev_pos = pp;
+                            hits[h].next_pos = np;
                             if (num_hits < 4) num_hits++;
                             break;
                         }
@@ -307,13 +318,12 @@ void main() {
         float hit_t = hits[h].t;
         float hit_d2 = hits[h].d2;
 
-        ivec2 nbrs = read_neighbors(ci);
-        int prev_ci = nbrs.x;
-        int next_ci = nbrs.y;
+        int prev_ci = hits[h].prev_ci;
+        int next_ci = hits[h].next_ci;
 
-        vec2 cp = read_pos(ci);
-        vec2 pp = (prev_ci >= 0) ? read_pos(prev_ci) : cp;
-        vec2 np = (next_ci >= 0) ? read_pos(next_ci) : cp;
+        vec2 cp = hits[h].cp_pos;
+        vec2 pp = hits[h].prev_pos;
+        vec2 np = hits[h].next_pos;
 
         // Single-neighbor rejection: skip if pixel is on the wrong side of endpoint
         if (prev_ci < 0) {
