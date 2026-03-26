@@ -232,7 +232,7 @@ void sparse_pixel_sizes(uint bx, uint by, out uint sizeA, out uint sizeB) {
 // ---- Main ----
 
 void main() {
-    ivec2 opos = ivec2(gl_FragCoord.xy);
+    ivec2 opos = ivec2(vTexCoord * params.OutputSize.xy);
     int gx = opos.x;
     int gy = opos.y;
 
