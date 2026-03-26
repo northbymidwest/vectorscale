@@ -12,7 +12,7 @@ Load `retroarch-shaders/vibeboy-vectorize.slangp` as a shader preset in RetroArc
 
 ## Architecture
 
-### Pipeline (9 passes, defined in `vibeboy-vectorize.slangp`)
+### Pipeline (8 passes, defined in `vibeboy-vectorize.slangp`)
 
 All shaders are in `retroarch-shaders/shaders/`. Data flows linearly through passes, with later passes reading earlier outputs via RetroArch texture aliases.
 
@@ -22,8 +22,7 @@ All shaders are in `retroarch-shaders/shaders/`. Data flows linearly through pas
 4. **init-positions** — Initializes the position texture from cell graph original positions.
 5. **optimize-energy** (x2) — 2D Newton-Raphson minimizing curvature + positional energy with analytical gradient and Hessian (3 iterations). Stores absolute positions in F32 framebuffers.
 6. **update-tjunction** — Weighted average smoothing for T-junction CPs and their stems.
-7. **cell-rasterizer** — Finds nearest B-spline boundary per output pixel via Newton-Raphson, resolves color from edge data, applies analytical AA. Multi-hit resolution with single-neighbor endpoint rejection.
-8. **passthrough** — Identity sample for correct RetroArch viewport mapping.
+7. **cell-rasterizer** — Finds nearest B-spline boundary per output pixel via Newton-Raphson, resolves color from edge data, applies analytical AA. Multi-hit resolution with single-neighbor endpoint rejection. Uses vTexCoord for direct viewport mapping.
 
 ### Key Data Encoding Conventions
 

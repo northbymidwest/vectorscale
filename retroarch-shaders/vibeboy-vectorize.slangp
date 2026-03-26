@@ -3,7 +3,7 @@
 # Intermediate textures are over-allocated using source-relative scales:
 #   Cell graph: 2W x 7H (needs (W+1) x 6(H+1), works for H >= 6)
 #   Positions:  2W x 3.5H (needs (W+1) x 2(H+1), works for H >= 2)
-shaders = 9
+shaders = 8
 
 shader0 = shaders/similarity-graph.slang
 alias0 = SimilarityGraph
@@ -66,15 +66,8 @@ wrap_mode6 = clamp_to_border
 float_framebuffer6 = true
 
 shader7 = shaders/cell-rasterizer.slang
-alias7 = Rasterized
-filter_linear7 = false
+alias7 = FinalOutput
+filter_linear7 = true
 scale_type7 = viewport
 scale7 = 1.0
 wrap_mode7 = clamp_to_border
-
-shader8 = shaders/passthrough.slang
-alias8 = FinalOutput
-filter_linear8 = true
-scale_type8 = viewport
-scale8 = 1.0
-wrap_mode8 = clamp_to_border
