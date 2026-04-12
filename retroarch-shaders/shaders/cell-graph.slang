@@ -400,10 +400,10 @@ void compute_corner(int cx, int cy, out CPData slot0, out CPData slot1) {
     } else {
         // Valence 4 cross-junction: inverse-correct both CPs so their
         // B-spline curves pass through the grid corner at t=0.5.
-        // IS_CORNER prevents optimizer movement, IS_CROSSING triggers
-        // inverse correction in update_tjunction.
-        slot0 = CPData(pos, n_idx, s_idx, 2u | IS_CORNER | IS_CROSSING, 0, 2);
-        slot1 = CPData(pos, e_idx, w_idx, 2u | IS_CORNER | IS_CROSSING, 1, 3);
+        // IS_CROSSING: inverse correction in update_tjunction, combined
+        // curvature optimization in optimize_energy.
+        slot0 = CPData(pos, n_idx, s_idx, 2u | IS_CROSSING, 0, 2);
+        slot1 = CPData(pos, e_idx, w_idx, 2u | IS_CROSSING, 1, 3);
     }
 }
 
