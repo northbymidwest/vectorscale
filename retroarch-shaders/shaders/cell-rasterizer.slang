@@ -385,7 +385,7 @@ void main() {
         float aa_threshold = 2.0 / (scale * scale);
         if (hit_d2 < aa_threshold && any(notEqual(pos_side, neg_side))) {
             float pw = inv_scale;
-            float proj_w = pw * (abs(opt_normal.x) + abs(opt_normal.y));
+            float proj_w = pw * max(abs(opt_normal.x), abs(opt_normal.y));
             float frac = clamp(0.5 + d / proj_w, 0.0, 1.0);
             center_color = frac * pos_side + (1.0 - frac) * neg_side;
         } else {
