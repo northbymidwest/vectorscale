@@ -387,7 +387,10 @@ void main() {
             float pw = inv_scale;
             float proj_w = pw * max(abs(opt_normal.x), abs(opt_normal.y));
             float frac = clamp(0.5 + d / proj_w, 0.0, 1.0);
-            center_color = frac * pos_side + (1.0 - frac) * neg_side;
+            // Blend in linear light (sRGB decode → blend → sRGB encode)
+            vec3 lin0 = pow(pos_side, vec3(2.2));
+            vec3 lin1 = pow(neg_side, vec3(2.2));
+            center_color = pow(frac * lin0 + (1.0 - frac) * lin1, vec3(1.0 / 2.2));
         } else {
             center_color = (d > 0.0) ? pos_side : neg_side;
         }
