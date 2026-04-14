@@ -179,10 +179,12 @@ vec2 beval_deriv(vec2 p0, vec2 p1, vec2 p2, float t) {
 // ---- Closest point on B-spline span ----
 
 vec2 closest_on_span(vec2 p0, vec2 p1, vec2 p2, vec2 pt) {
+    // 9 coarse samples (every 0.125) to prevent Newton from getting
+    // trapped at zero-derivative degenerate endpoints (pp==np).
     float best_d2 = 1e10;
     float best_t = 0.0;
-    for (int s = 0; s <= 4; s++) {
-        float t = float(s) * 0.25;
+    for (int s = 0; s <= 8; s++) {
+        float t = float(s) * 0.125;
         vec2 bp = beval(p0, p1, p2, t);
         float d2 = dot(pt - bp, pt - bp);
         if (d2 < best_d2) { best_d2 = d2; best_t = t; }
