@@ -363,15 +363,6 @@ void main() {
         vec2 pp = hits[h].prev_pos;
         vec2 np = hits[h].next_pos;
 
-        // Single-neighbor rejection: skip if pixel is on the wrong side of endpoint
-        if (prev_ci < 0) {
-            vec2 toward = np - cp;
-            if (dot(center - cp, toward) < 0.0) continue;
-        } else if (next_ci < 0) {
-            vec2 toward = pp - cp;
-            if (dot(center - cp, toward) < 0.0) continue;
-        }
-
         // Compute edge colors on-the-fly from grid position + boundary direction
         ivec2 grid = cp_grid_corner(ci);
         ivec2 dirs = read_dirs(ci);
