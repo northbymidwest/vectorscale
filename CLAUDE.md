@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VectorScale is a RetroArch Slang shader that implements the Kopf-Lischinski pixel-art vectorization algorithm. It converts pixel art into smooth vector boundaries with analytical anti-aliasing, running entirely on the GPU as a 10-pass fragment shader pipeline. There is no build system, test suite, or application code — the deliverable is the shader preset file and its associated `.slang` shaders.
+VectorScale is a RetroArch Slang shader that implements the Kopf-Lischinski pixel-art vectorization algorithm. It converts pixel art into smooth vector boundaries with analytical anti-aliasing, running entirely on the GPU as an 11-pass fragment shader pipeline. There is no build system, test suite, or application code — the deliverable is the shader preset file and its associated `.slang` shaders.
 
 ## How to Test
 
@@ -12,7 +12,7 @@ Load `retroarch-shaders/vibeboy-vectorize.slangp` as a shader preset in RetroArc
 
 ## Architecture
 
-### Pipeline (8 passes, defined in `vibeboy-vectorize.slangp`)
+### Pipeline (11 passes, defined in `vibeboy-vectorize.slangp`)
 
 All shaders are in `retroarch-shaders/shaders/`. Data flows linearly through passes, with later passes reading earlier outputs via RetroArch texture aliases.
 
@@ -21,8 +21,9 @@ All shaders are in `retroarch-shaders/shaders/`. Data flows linearly through pas
 3. **cell-graph** — Creates B-spline control points (CPs) at grid corners. Each CP has 3 texture rows: position+flags+directions, prev neighbor, next neighbor. Handles diagonal splits (2 CPs per corner), T-junctions, and valence-4 nodes.
 4. **init-positions** — Initializes the position texture from cell graph original positions.
 5. **optimize-energy** (x2) — 2D Newton-Raphson minimizing curvature + positional energy with analytical gradient and Hessian (3 iterations). Stores absolute positions in F32 framebuffers.
-6. **update-tjunction** — Weighted average smoothing for T-junction CPs and their stems.
-7. **cell-rasterizer** — Finds nearest B-spline boundary per output pixel via Newton-Raphson, resolves color from edge data, applies analytical AA. Multi-hit resolution with single-neighbor endpoint rejection. Uses vTexCoord for direct viewport mapping.
+6. **update-tjunction** (x3) — Weighted average snap of T-junction stem CPs onto the rendered through-curve via the ghost-aware algebraic B(0.5) formula. Iterated for convergence when stems are neighbors of other stems. Crossings and through-CPs pass through unchanged.
+7. **pack-positions** — Denormalizes per-CP render geometry into 3 horizontally-adjacent texels: ghost-extended (pp, cp, np) triple, t_branch, neighbor indices, validity, is_line. For IS_CROSSING CPs, t_branch is the curve-curve intersection parameter computed inline via 2D Newton iteration on the two B-spline spans. For one-sided clamped Bezier spans (where prev or next is an endpoint), t_branch is computed via a closed-form cubic solver. Lets the rasterizer skip neighbor-index decode + neighbor position fetches + ghost construction + cubic/Newton solves in its hot loop.
+8. **cell-rasterizer** — Finds nearest B-spline boundary per output pixel via Newton-Raphson, resolves color from edge data, applies analytical AA. Reads per-CP geometry directly from `PackedPositions` — no per-pixel ghost extension or t_branch computation. Multi-hit resolution with single-neighbor endpoint rejection. Uses vTexCoord for direct viewport mapping.
 
 ### Key Data Encoding Conventions
 
